@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fact Family Engineer</title>
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab, #9b59b6);
+            --primary-blue: #23a6d5;
+        }
+
+        /* Reusing your branding */
+        #puppy-logo { position: fixed; top: 20px; left: 20px; width: 140px; z-index: 9999; mix-blend-mode: multiply; }
+        
+        body, html {
+            margin: 0; padding: 0; height: 100%;
+            font-family: 'Segoe UI', sans-serif;
+            display: flex; justify-content: center; align-items: center;
+            background: var(--bg-gradient); background-size: 400% 400%;
+            animation: gradientBG 21s ease infinite; overflow: hidden;
+        }
+
+        @keyframes gradientBG { 0% {background-position: 0% 50%;} 50% {background-position: 100% 50%;} 100% {background-position: 0% 50%;} }
+
+        #game-container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 2rem; border-radius: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            text-align: center; width: 90%; max-width: 800px; min-height: 500px;
+            position: relative;
+        }
+
+        /* THE TRIANGLE VISUALIZATION */
+        .triangle-container {
+            position: relative; width: 300px; height: 250px; margin: 20px auto;
+        }
+
+        .node {
+            position: absolute; width: 80px; height: 80px;
+            background: white; border: 4px solid var(--primary-blue);
+            border-radius: 50%; display: flex; justify-content: center;
+            align-items: center; font-size: 1.8rem; font-weight: bold;
+            z-index: 2; transition: all 0.3s;
+        }
+
+        .peak { top: 0; left: 50%; transform: translateX(-50%); border-color: #e73c7e; }
+        .base-l { bottom: 0; left: 0; }
+        .base-r { bottom: 0; right: 0; }
+
+        .line {
+            position: absolute; background: #ddd; z-index: 1;
+        }
+        .line-l { width: 4px; height: 180px; top: 40px; left: 80px; transform: rotate(35deg); transform-origin: top; }
+        .line-r { width: 4px; height: 180px; top: 40px; right: 80px; transform: rotate(-35deg); transform-origin: top; }
+        .line-b { height: 4px; width: 180px; bottom: 40px; left: 60px; }
+
+        .symbol-hint {
+            position: absolute; font-size: 1.5rem; color: #e73c7e;
+            opacity: 0; transition: opacity 0.5s; font-weight: bold;
+        }
+
+        /* INPUTS */
+        .answer-input {
+            font-size: 2rem; width: 100px; padding: 10px;
+            border: 4px solid #eee; border-radius: 15px; text-align: center;
+        }
+
+        .mode-btn {
+            padding: 10px 20px; margin: 5px; cursor: pointer;
+            border-radius: 10px; border: none; background: #eee;
+            font-weight: bold; transition: 0.2s;
+        }
+        .active-mode { background: var(--primary-blue); color: white; }
+
+        .shake { animation: shake 0.5s ease-in-out; }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-10px); } 40%, 80% { transform: translateX(10px); } }
+    </style>
+</head>
+<body>
+
+<img src="assets/BernadoodleLogo.png" id="puppy-logo" alt="Math Puppy">
+
+<div id="game-container">
+    <div id="mode-selector">
+        <button class="mode-btn active-mode" onclick="setMode('FILL')">Missing Number</button>
+        <button class="mode-btn" onclick="setMode('HUNT')">Imposter Hunt</button>
+        <button class="mode-btn" onclick="setMode('OP')">Add or Multiply?</button>
+    </div>
+
+    <h2 id="instruction">Find the missing family member!</h2>
+
+    <div id="display-area">
+        </div>
+
+    <div id="control-area" style="margin-top: 20px;">
+        <input type="number" id="user-answer" class="answer-input" placeholder="?">
+        <div id="options-area" style="display:none;"></div>
+    </div>
+</div>
+
+<script>
+    let currentMode = 'FILL';
+    let currentFamily = { a: 0, b: 0, c: 0, type: '+' };
+
+    function generateFamily() {
+        const isMult = Math.random() > 0.5;
+        const a = Math.floor(Math.random() * 10) + 1;
+        const b = Math.floor(Math.random() * 10) + 1;
+        
+        if (isMult) {
+            return { a, b, c: a * b, type: '×' };
+        } else {
+            return { a, b, c: a + b, type: '+' };
+        }
+    }
+
+    function renderTriangle(family, hiddenKey = null) {
+        const area = document.getElementById('display-area');
+        area.innerHTML = `
+            <div class="triangle-container" id="main-triangle">
+                <div class="line line-l"></div>
+                <div class="line line-r"></div>
+                <div class="line line-b"></div>
+                <div class="symbol-hint" style="top:50%; left:50%; transform:translate(-50%,-50%)">${family.type}</div>
+                
+                <div class="node peak">${hiddenKey === 'c' ? '?' : family.c}</div>
+                <div class="node base-l">${hiddenKey === 'a' ? '?' : family.a}</div>
+                <div class="node base-r">${hiddenKey === 'b' ? '?' : family.b}</div>
+            </div>
+        `;
+    }
+
+    function setMode(mode) {
+        currentMode = mode;
+        document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active-mode'));
+        event.target.classList.add('active-mode');
+        newRound();
+    }
+
+    function newRound() {
+        currentFamily = generateFamily();
+        const input = document.getElementById('user-answer');
+        const options = document.getElementById('options-area');
+        
+        input.value = '';
+        input.style.display = 'inline-block';
+        options.style.display = 'none';
+
+        if (currentMode === 'FILL') {
+            const keys = ['a', 'b', 'c'];
+            const hidden = keys[Math.floor(Math.random() * 3)];
+            currentFamily.hidden = hidden;
+            renderTriangle(currentFamily, hidden);
+            document.getElementById('instruction').innerText = "What number completes the family?";
+        } 
+        else if (currentMode === 'OP') {
+            renderTriangle(currentFamily);
+            input.style.display = 'none';
+            options.style.display = 'block';
+            options.innerHTML = `
+                <button class="mode-btn" onclick="checkOp('+')">Addition Family (+)</button>
+                <button class="mode-btn" onclick="checkOp('×')">Multiplication Family (×)</button>
+            `;
+            document.getElementById('instruction').innerText = "Is this an Addition or Multiplication family?";
+        }
+    }
+
+    function checkAnswer() {
+        const val = parseInt(document.getElementById('user-answer').value);
+        const correct = currentFamily[currentFamily.hidden];
+        
+        if (val === correct) {
+            showSuccess();
+        } else {
+            failShake();
+        }
+    }
+
+    function checkOp(op) {
+        if (op === currentFamily.type) showSuccess();
+        else failShake();
+    }
+
+    function showSuccess() {
+        document.querySelector('.symbol-hint').style.opacity = '1';
+        setTimeout(newRound, 1000);
+    }
+
+    function failShake() {
+        document.getElementById('game-container').classList.add('shake');
+        setTimeout(() => document.getElementById('game-container').classList.remove('shake'), 500);
+    }
+
+    window.addEventListener('keydown', (e) => { if (e.key === 'Enter') checkAnswer(); });
+    newRound();
+</script>
+</body>
+</html>
