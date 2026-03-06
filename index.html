@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Math Fact Families</title>
+    <title>Fact Family Engineer</title>
     <style>
         :root {
             --bg-gradient: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab, #9b59b6);
             --teal: #23a6d5;
             --pink: #e73c7e;
+            --vivid-magenta: #8B008B;
         }
 
         #puppy-logo { position: fixed; top: 20px; left: 20px; width: 140px; z-index: 9999; mix-blend-mode: multiply; }
@@ -49,30 +50,25 @@
         .line-r { width: 4px; height: 180px; top: 40px; right: 80px; transform: rotate(-35deg); transform-origin: top; }
         .line-b { height: 4px; width: 180px; bottom: 40px; left: 60px; }
 
-        /* TEAL SYMBOL UI UPDATE */
-        .symbol-hint {
-            position: absolute; font-size: 2.5rem; color: var(--teal);
-            opacity: 0; transition: opacity 0.4s, transform 0.4s; 
-            font-weight: bold; top: 55%; left: 50%; transform: translate(-50%, -50%) scale(0.5);
+        /* THE RELATIONSHIP OVERLAY */
+        #success-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.85);
+            display: none; flex-direction: column; justify-content: center;
+            align-items: center; z-index: 10000;
         }
-        .symbol-visible { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+        .overlay-content {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 40px;
+            color: var(--vivid-magenta); font-size: 3rem; font-weight: bold;
+        }
 
-        /* BUTTONS & INPUTS */
-        .answer-input {
-            font-size: 2rem; width: 120px; padding: 10px;
-            border: 4px solid #eee; border-radius: 15px; text-align: center;
-        }
-        .mode-btn {
-            padding: 12px 24px; margin: 8px; cursor: pointer;
-            border-radius: 12px; border: none; background: #f0f0f0;
-            font-weight: bold; transition: 0.2s; font-size: 1rem;
-        }
+        .op-indicator { font-size: 1.2rem; color: #777; font-weight: bold; margin-bottom: 10px; }
+
+        /* BUTTONS */
+        .answer-input { font-size: 2.5rem; width: 120px; padding: 10px; border: 4px solid #eee; border-radius: 15px; text-align: center; }
+        .mode-btn { padding: 12px 24px; margin: 8px; cursor: pointer; border-radius: 12px; border: none; background: #f0f0f0; font-weight: bold; }
         .active-mode { background: var(--teal); color: white; }
         
-        /* YES/NO BUTTONS */
-        .btn-yes { background: #23d5ab; color: white; font-size: 1.5rem; padding: 15px 40px; }
-        .btn-no { background: var(--pink); color: white; font-size: 1.5rem; padding: 15px 40px; }
-
         .shake { animation: shake 0.5s ease-in-out; }
         @keyframes shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-10px); } 40%, 80% { transform: translateX(10px); } }
     </style>
@@ -81,6 +77,12 @@
 
 <img src="assets/BernadoodleLogo.png" id="puppy-logo" alt="Math Puppy">
 
+<div id="success-overlay" onclick="nextRound()">
+    <h1 style="color: var(--teal); margin-bottom: 2rem;">Family Bond Confirmed!</h1>
+    <div class="overlay-content" id="equation-display"></div>
+    <p style="margin-top: 2rem; color: #aaa;">(Tap anywhere to continue)</p>
+</div>
+
 <div id="game-container">
     <div id="mode-selector">
         <button class="mode-btn active-mode" onclick="setMode('FILL')">Missing Number</button>
@@ -88,7 +90,8 @@
         <button class="mode-btn" onclick="setMode('OP')">Add or Multiply?</button>
     </div>
 
-    <h2 id="instruction" style="height: 60px; margin-top: 20px;">Ready to solve?</h2>
+    <div id="operation-clue" class="op-indicator">Multiplication Family (×)</div>
+    <h2 id="instruction" style="height: 60px;">Solve for the family member!</h2>
 
     <div id="display-area"></div>
 
@@ -100,33 +103,28 @@
 
 <script>
     let currentMode = 'FILL';
-    let currentFamily = { a: 0, b: 0, c: 0, type: '+', isReal: true };
+    let currentFamily = {};
 
     function generateFamily(forceFake = false) {
         const isMult = Math.random() > 0.5;
-        const a = Math.floor(Math.random() * 10) + 1;
-        const b = Math.floor(Math.random() * 10) + 1;
+        const a = Math.floor(Math.random() * 9) + 2;
+        const b = Math.floor(Math.random() * 9) + 2;
         let type = isMult ? '×' : '+';
+        let inv = isMult ? '÷' : '-';
         let c = isMult ? (a * b) : (a + b);
         let isReal = true;
 
         if (forceFake) {
-            c = c + (Math.random() > 0.5 ? 1 : -1);
-            if (c < 1) c = 5; 
+            c = c + (Math.random() > 0.5 ? 2 : -2);
             isReal = false;
         }
-
-        return { a, b, c, type, isReal };
+        return { a, b, c, type, inv, isReal };
     }
 
     function renderTriangle(family, hiddenKey = null) {
-        const area = document.getElementById('display-area');
-        area.innerHTML = `
+        document.getElementById('display-area').innerHTML = `
             <div class="triangle-container">
-                <div class="line line-l"></div>
-                <div class="line line-r"></div>
-                <div class="line line-b"></div>
-                <div id="symbol" class="symbol-hint">${family.type}</div>
+                <div class="line line-l"></div><div class="line line-r"></div><div class="line line-b"></div>
                 <div class="node peak">${hiddenKey === 'c' ? '?' : family.c}</div>
                 <div class="node base-l">${hiddenKey === 'a' ? '?' : family.a}</div>
                 <div class="node base-r">${hiddenKey === 'b' ? '?' : family.b}</div>
@@ -142,67 +140,60 @@
     }
 
     function newRound() {
+        document.getElementById('success-overlay').style.display = 'none';
         const input = document.getElementById('user-answer');
         const options = document.getElementById('options-area');
-        input.value = '';
-        input.style.display = 'none';
-        options.style.display = 'none';
+        const clue = document.getElementById('operation-clue');
+        
+        input.value = ''; input.style.display = 'none'; options.style.display = 'none';
 
         if (currentMode === 'FILL') {
             currentFamily = generateFamily(false);
-            const keys = ['a', 'b', 'c'];
-            currentFamily.hidden = keys[Math.floor(Math.random() * 3)];
-            renderTriangle(currentFamily, currentFamily.hidden);
-            input.style.display = 'inline-block';
-            input.focus();
-            document.getElementById('instruction').innerText = "Which number is missing from the family?";
+            const hidden = ['a', 'b', 'c'][Math.floor(Math.random() * 3)];
+            currentFamily.hidden = hidden;
+            clue.innerText = currentFamily.type === '×' ? "Multiplication Family (×)" : "Addition Family (+)";
+            renderTriangle(currentFamily, hidden);
+            input.style.display = 'inline-block'; input.focus();
         } 
         else if (currentMode === 'HUNT') {
-            const shouldBeFake = Math.random() > 0.5;
-            currentFamily = generateFamily(shouldBeFake);
+            currentFamily = generateFamily(Math.random() > 0.5);
+            clue.innerText = "Check the math carefully!";
             renderTriangle(currentFamily);
             options.style.display = 'block';
-            options.innerHTML = `
-                <button class="mode-btn btn-yes" onclick="checkHunt(true)">YES</button>
-                <button class="mode-btn btn-no" onclick="checkHunt(false)">NO</button>
-            `;
-            document.getElementById('instruction').innerText = "Is this a real Fact Family?";
+            options.innerHTML = `<button class="mode-btn" style="background:#23d5ab;color:white;font-size:1.5rem;" onclick="checkHunt(true)">YES</button>
+                                 <button class="mode-btn" style="background:var(--pink);color:white;font-size:1.5rem;" onclick="checkHunt(false)">NO</button>`;
         }
-        else if (currentMode === 'OP') {
+        else { // OP MODE
             currentFamily = generateFamily(false);
+            clue.innerText = "Look at the number cluster...";
             renderTriangle(currentFamily);
             options.style.display = 'block';
-            options.innerHTML = `
-                <button class="mode-btn" onclick="checkOp('+')">Addition (+)</button>
-                <button class="mode-btn" onclick="checkOp('×')">Multiplication (×)</button>
-            `;
-            document.getElementById('instruction').innerText = "What rule connects this family?";
+            options.innerHTML = `<button class="mode-btn" onclick="checkOp('+')">Addition (+)</button>
+                                 <button class="mode-btn" onclick="checkOp('×')">Multiplication (×)</button>`;
         }
     }
 
     function checkAnswer() {
-        const val = parseInt(document.getElementById('user-answer').value);
-        if (val === currentFamily[currentFamily.hidden]) showSuccess();
-        else failShake();
+        if (parseInt(document.getElementById('user-answer').value) === currentFamily[currentFamily.hidden]) showOverlay();
+        else fail();
     }
 
-    function checkHunt(playerSaysReal) {
-        if (playerSaysReal === currentFamily.isReal) showSuccess();
-        else failShake();
+    function checkHunt(val) { if (val === currentFamily.isReal) showOverlay(); else fail(); }
+    function checkOp(op) { if (op === currentFamily.type) showOverlay(); else fail(); }
+
+    function showOverlay() {
+        const {a, b, c, type, inv} = currentFamily;
+        const display = document.getElementById('equation-display');
+        display.innerHTML = `
+            <div>${a} ${type} ${b} = ${c}<br>${b} ${type} ${a} = ${c}</div>
+            <div>${c} ${inv} ${a} = ${b}<br>${c} ${inv} ${b} = ${a}</div>
+        `;
+        document.getElementById('success-overlay').style.display = 'flex';
     }
 
-    function checkOp(op) {
-        if (op === currentFamily.type) showSuccess();
-        else failShake();
-    }
+    function nextRound() { newRound(); }
 
-    function showSuccess() {
-        const sym = document.getElementById('symbol');
-        if (sym && currentFamily.isReal) sym.classList.add('symbol-visible');
-        setTimeout(newRound, 800);
-    }
-
-    function failShake() {
+    function fail() {
         document.getElementById('game-container').classList.add('shake');
         setTimeout(() => document.getElementById('game-container').classList.remove('shake'), 500);
     }
