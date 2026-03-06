@@ -67,8 +67,14 @@
         .equation-col { display: flex; flex-direction: column; gap: 15px; text-align: center; }
 
         .op-indicator { font-size: 1.4rem; color: #555; font-weight: bold; margin-bottom: 5px; height: 35px; }
-        .clue-tag { background: #eee; padding: 4px 12px; border-radius: 8px; color: var(--teal); }
-
+        .clue-tag { 
+            background: #eee; 
+            padding: 6px 16px; /* Increased padding slightly */
+            border-radius: 8px; 
+            color: var(--teal); 
+            display: inline-block;
+            min-width: 200px; /* Ensures the container doesn't jump when switching modes */
+        }
         /* CONTROLS */
         .answer-input { font-size: 2.5rem; width: 140px; padding: 10px; border: 4px solid #eee; border-radius: 15px; text-align: center; outline: none; }
         .mode-btn { padding: 12px 24px; margin: 8px; cursor: pointer; border-radius: 12px; border: none; background: #f0f0f0; font-weight: bold; font-size: 1rem; }
@@ -158,11 +164,12 @@
         if (currentMode === 'FILL') {
             currentFamily = generateFamily(false);
             currentFamily.hidden = ['a', 'b', 'c'][Math.floor(Math.random() * 3)];
-            clueArea.innerHTML = `<span class="clue-tag">${currentFamily.type === '×' ? "MULTIPLICATION" : "ADDITION"}</span>`;
+            // Updated to show the full family scope
+            clueArea.innerHTML = `<span class="clue-tag">${currentFamily.type === '×' ? "MULTIPLY / DIVIDE" : "ADD / SUBTRACT"}</span>`;
             renderTriangle(currentFamily, currentFamily.hidden);
             input.style.display = 'inline-block'; input.focus();
             document.getElementById('instruction').innerText = "Complete the Family:";
-        } 
+        }
         else if (currentMode === 'HUNT') {
             currentFamily = generateFamily(Math.random() > 0.5);
             clueArea.innerText = "Check the math carefully!";
@@ -177,9 +184,10 @@
             clueArea.innerText = "What connects these numbers?";
             renderTriangle(currentFamily);
             options.style.display = 'block';
-            options.innerHTML = `<button class="mode-btn active-mode" onclick="checkOp('+')">ADDITION (+)</button>
-                                 <button class="mode-btn active-mode" style="background:var(--pink)" onclick="checkOp('×')">MULTIPLICATION (×)</button>`;
-            document.getElementById('instruction').innerText = "Identify the Rule:";
+            // Buttons now indicate the dual nature of the cluster
+            options.innerHTML = `<button class="mode-btn active-mode" onclick="checkOp('+')">ADD / SUBTRACT</button>
+                                 <button class="mode-btn active-mode" style="background:var(--pink)" onclick="checkOp('×')">MULTIPLY / DIVIDE</button>`;
+            document.getElementById('instruction').innerText = "Identify the Family Type:";
         }
     }
 
