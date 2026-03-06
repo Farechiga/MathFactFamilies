@@ -3,18 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Math Fact Families Game</title>
+    <title>Fact Family Engineer</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         :root {
             --bg-gradient: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab, #9b59b6);
             --teal: #23a6d5;
             --pink: #e73c7e;
             --vivid-magenta: #FF00FF; 
-            --overlay-bg: rgba(20, 20, 20, 0.88); /* 88% opaque dark grey */
+            --overlay-bg: rgba(20, 20, 20, 0.88);
         }
 
         #puppy-logo { position: fixed; top: 20px; left: 20px; width: 140px; z-index: 9999; mix-blend-mode: multiply; }
         
+        /* SCOREBOARD */
+        #scoreboard {
+            position: fixed; top: 20px; right: 40px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px 25px; border-radius: 20px;
+            font-size: 1.5rem; font-weight: bold; color: var(--teal);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); z-index: 9999;
+        }
+
         body, html {
             margin: 0; padding: 0; height: 100%;
             font-family: 'Segoe UI', sans-serif;
@@ -66,8 +76,12 @@
         }
         .equation-col { display: flex; flex-direction: column; gap: 15px; text-align: center; }
 
-        .op-indicator { font-size: 1.4rem; color: #555; font-weight: bold; margin-bottom: 5px; height: 45px; }
-        .clue-tag { background: #eee; padding: 6px 16px; border-radius: 8px; color: var(--teal); display: inline-block; min-width: 220px;}
+        #instruction { 
+            font-size: 2rem; color: #444; height: 80px; 
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 0;
+        }
+        .instr-tag { background: #eee; padding: 8px 20px; border-radius: 12px; color: var(--pink); font-weight: 800; letter-spacing: 1px;}
 
         /* CONTROLS */
         .answer-input { font-size: 2.5rem; width: 140px; padding: 10px; border: 4px solid #eee; border-radius: 15px; text-align: center; outline: none; }
@@ -82,11 +96,12 @@
 <body>
 
 <img src="assets/BernadoodleLogo.png" id="puppy-logo" alt="Math Puppy">
+<div id="scoreboard">Points: 0</div>
 
 <div id="success-overlay" onclick="newRound()">
-    <h1 style="color: white; margin-bottom: 3rem; font-size: 2.5rem;">Family Bond Verified</h1>
+    <h1 style="color: white; margin-bottom: 3rem; font-size: 2.5rem;">Family Relationships Identified!</h1>
     <div class="overlay-content" id="equation-display"></div>
-    <p style="margin-top: 4rem; color: #666; font-size: 1.2rem;">(Tap anywhere to continue)</p>
+    <p style="margin-top: 4rem; color: #666; font-size: 1.2rem;">(Tap to continue)</p>
 </div>
 
 <div id="game-container">
@@ -96,8 +111,7 @@
         <button class="mode-btn" onclick="setMode('OP')">Add or Multiply?</button>
     </div>
 
-    <div id="operation-clue" class="op-indicator"></div>
-    <h2 id="instruction" style="height: 60px;">Analyzing...</h2>
+    <h2 id="instruction"></h2>
 
     <div id="display-area"></div>
 
@@ -110,6 +124,21 @@
 <script>
     let currentMode = 'FILL';
     let currentFamily = {};
+    let score = 0;
+
+    function updateScore(pts) {
+        score += pts;
+        document.getElementById('scoreboard').innerText = `Points: ${score}`;
+    }
+
+    function triggerConfetti() {
+        confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: ['#ee7752', '#e73c7e', '#23a6d5', '#23d5ab']
+        });
+    }
 
     function generateFamily(forceFake = false) {
         const isMult = Math.random() > 0.5;
@@ -149,8 +178,8 @@
         document.getElementById('success-overlay').style.display = 'none';
         const input = document.getElementById('user-answer');
         const options = document.getElementById('options-area');
-        const clueArea = document.getElementById('operation-clue');
         const container = document.getElementById('game-container');
+        const instrArea = document.getElementById('instruction');
         
         container.classList.remove('correct-pulse');
         input.value = ''; input.style.display = 'none'; options.style.display = 'none';
@@ -160,57 +189,62 @@
             const hidden = ['a', 'b', 'c'][Math.floor(Math.random() * 3)];
             currentFamily.hidden = hidden;
 
-            /* THE LOGIC UPDATE */
-            let labelText = "";
+            let label = "";
             if (hidden === 'c') {
-                // Peak is missing: straightforward addition or multiplication
-                labelText = (currentFamily.type === '×') ? "MULTIPLY" : "ADD";
+                label = (currentFamily.type === '×') ? "MULTIPLY" : "ADD";
             } else {
-                // Base is missing: requires inverse thinking
-                labelText = (currentFamily.type === '×') ? "MULTIPLY / DIVIDE" : "ADD / SUBTRACT";
+                label = (currentFamily.type === '×') ? "MULTIPLY / DIVIDE" : "ADD / SUBTRACT";
             }
 
-            clueArea.innerHTML = `<span class="clue-tag">${labelText}</span>`;
+            instrArea.innerHTML = `<span class="instr-tag">${label}</span>`;
             renderTriangle(currentFamily, hidden);
             input.style.display = 'inline-block'; input.focus();
-            document.getElementById('instruction').innerText = "Complete the Family:";
         } 
         else if (currentMode === 'HUNT') {
             currentFamily = generateFamily(Math.random() > 0.5);
-            clueArea.innerText = "Check the math carefully!";
+            instrArea.innerHTML = `<span class="instr-tag" style="background:#ddd;color:#555">IS THIS A REAL FAMILY?</span>`;
             renderTriangle(currentFamily);
             options.style.display = 'block';
             options.innerHTML = `<button class="mode-btn" style="background:#23d5ab;color:white;font-size:1.5rem;padding:15px 45px" onclick="checkHunt(true)">YES</button>
                                  <button class="mode-btn" style="background:var(--pink);color:white;font-size:1.5rem;padding:15px 45px" onclick="checkHunt(false)">NO</button>`;
-            document.getElementById('instruction').innerText = "Is this a real Fact Family?";
         }
         else {
             currentFamily = generateFamily(false);
-            clueArea.innerText = "What rule connects this cluster?";
+            instrArea.innerHTML = `<span class="instr-tag" style="background:#ddd;color:#555">IDENTIFY THE RULE:</span>`;
             renderTriangle(currentFamily);
             options.style.display = 'block';
             options.innerHTML = `<button class="mode-btn active-mode" onclick="checkOp('+')">ADD / SUBTRACT</button>
                                  <button class="mode-btn active-mode" style="background:var(--pink)" onclick="checkOp('×')">MULTIPLY / DIVIDE</button>`;
-            document.getElementById('instruction').innerText = "Identify the Family Type:";
         }
     }
 
     function checkAnswer() {
-        if (parseInt(document.getElementById('user-answer').value) === currentFamily[currentFamily.hidden]) showOverlay();
-        else fail();
+        if (parseInt(document.getElementById('user-answer').value) === currentFamily[currentFamily.hidden]) {
+            updateScore(10);
+            triggerConfetti();
+            showOverlay();
+        } else fail();
     }
 
     function checkHunt(playerSaysReal) {
         if (playerSaysReal === currentFamily.isReal) {
+            updateScore(15);
+            triggerConfetti();
             if (currentFamily.isReal) showOverlay();
             else {
                 document.getElementById('game-container').classList.add('correct-pulse');
-                setTimeout(newRound, 500);
+                setTimeout(newRound, 600);
             }
         } else fail();
     }
 
-    function checkOp(op) { if (op === currentFamily.type) showOverlay(); else fail(); }
+    function checkOp(op) { 
+        if (op === currentFamily.type) {
+            updateScore(10);
+            triggerConfetti();
+            showOverlay();
+        } else fail(); 
+    }
 
     function showOverlay() {
         const {a, b, c, type, inv} = currentFamily;
