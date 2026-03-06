@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Math Fact Families Game</title>
+    <title>Fact Family Engineer</title>
     <style>
         :root {
             --bg-gradient: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab, #9b59b6);
             --teal: #23a6d5;
             --pink: #e73c7e;
             --vivid-magenta: #FF00FF; 
-            --overlay-bg: rgba(20, 20, 20, 0.88); /* Deep Dark 88% Opaque */
+            --overlay-bg: rgba(20, 20, 20, 0.88); /* 88% opaque dark grey */
         }
 
         #puppy-logo { position: fixed; top: 20px; left: 20px; width: 140px; z-index: 9999; mix-blend-mode: multiply; }
@@ -20,7 +20,7 @@
             font-family: 'Segoe UI', sans-serif;
             display: flex; justify-content: center; align-items: center;
             background: var(--bg-gradient); background-size: 400% 400%;
-            animation: gradientBG 16s ease infinite; overflow: hidden;
+            animation: gradientBG 21s ease infinite; overflow: hidden;
         }
 
         @keyframes gradientBG { 0% {background-position: 0% 50%;} 50% {background-position: 100% 50%;} 100% {background-position: 0% 50%;} }
@@ -66,15 +66,9 @@
         }
         .equation-col { display: flex; flex-direction: column; gap: 15px; text-align: center; }
 
-        .op-indicator { font-size: 1.4rem; color: #555; font-weight: bold; margin-bottom: 5px; height: 35px; }
-        .clue-tag { 
-            background: #eee; 
-            padding: 6px 16px; /* Increased padding slightly */
-            border-radius: 8px; 
-            color: var(--teal); 
-            display: inline-block;
-            min-width: 200px; /* Ensures the container doesn't jump when switching modes */
-        }
+        .op-indicator { font-size: 1.4rem; color: #555; font-weight: bold; margin-bottom: 5px; height: 45px; }
+        .clue-tag { background: #eee; padding: 6px 16px; border-radius: 8px; color: var(--teal); display: inline-block; min-width: 220px;}
+
         /* CONTROLS */
         .answer-input { font-size: 2.5rem; width: 140px; padding: 10px; border: 4px solid #eee; border-radius: 15px; text-align: center; outline: none; }
         .mode-btn { padding: 12px 24px; margin: 8px; cursor: pointer; border-radius: 12px; border: none; background: #f0f0f0; font-weight: bold; font-size: 1rem; }
@@ -87,12 +81,12 @@
 </head>
 <body>
 
-<img src="assets/BernadoodleLogo.png" id="puppy-logo" alt="Math Facts Puppy">
+<img src="assets/BernadoodleLogo.png" id="puppy-logo" alt="Math Puppy">
 
 <div id="success-overlay" onclick="newRound()">
-    <h1 style="color: white; margin-bottom: 3rem; font-size: 2.5rem;">The Bond is Mathematically Sound!</h1>
+    <h1 style="color: white; margin-bottom: 3rem; font-size: 2.5rem;">Family Bond Verified</h1>
     <div class="overlay-content" id="equation-display"></div>
-    <p style="margin-top: 4rem; color: #666; font-size: 1.2rem;">(Tap to continue)</p>
+    <p style="margin-top: 4rem; color: #666; font-size: 1.2rem;">(Tap anywhere to continue)</p>
 </div>
 
 <div id="game-container">
@@ -163,13 +157,24 @@
 
         if (currentMode === 'FILL') {
             currentFamily = generateFamily(false);
-            currentFamily.hidden = ['a', 'b', 'c'][Math.floor(Math.random() * 3)];
-            // Updated to show the full family scope
-            clueArea.innerHTML = `<span class="clue-tag">${currentFamily.type === '×' ? "MULTIPLY / DIVIDE" : "ADD / SUBTRACT"}</span>`;
-            renderTriangle(currentFamily, currentFamily.hidden);
+            const hidden = ['a', 'b', 'c'][Math.floor(Math.random() * 3)];
+            currentFamily.hidden = hidden;
+
+            /* THE LOGIC UPDATE */
+            let labelText = "";
+            if (hidden === 'c') {
+                // Peak is missing: straightforward addition or multiplication
+                labelText = (currentFamily.type === '×') ? "MULTIPLY" : "ADD";
+            } else {
+                // Base is missing: requires inverse thinking
+                labelText = (currentFamily.type === '×') ? "MULTIPLY / DIVIDE" : "ADD / SUBTRACT";
+            }
+
+            clueArea.innerHTML = `<span class="clue-tag">${labelText}</span>`;
+            renderTriangle(currentFamily, hidden);
             input.style.display = 'inline-block'; input.focus();
             document.getElementById('instruction').innerText = "Complete the Family:";
-        }
+        } 
         else if (currentMode === 'HUNT') {
             currentFamily = generateFamily(Math.random() > 0.5);
             clueArea.innerText = "Check the math carefully!";
@@ -181,10 +186,9 @@
         }
         else {
             currentFamily = generateFamily(false);
-            clueArea.innerText = "What connects these numbers?";
+            clueArea.innerText = "What rule connects this cluster?";
             renderTriangle(currentFamily);
             options.style.display = 'block';
-            // Buttons now indicate the dual nature of the cluster
             options.innerHTML = `<button class="mode-btn active-mode" onclick="checkOp('+')">ADD / SUBTRACT</button>
                                  <button class="mode-btn active-mode" style="background:var(--pink)" onclick="checkOp('×')">MULTIPLY / DIVIDE</button>`;
             document.getElementById('instruction').innerText = "Identify the Family Type:";
@@ -196,19 +200,14 @@
         else fail();
     }
 
-    /* THE LOGIC FIX: Caught imposters skip the reinforcement overlay */
     function checkHunt(playerSaysReal) {
         if (playerSaysReal === currentFamily.isReal) {
-            if (currentFamily.isReal) {
-                showOverlay();
-            } else {
-                // Correctly caught an imposter! Pulse green and skip overlay.
+            if (currentFamily.isReal) showOverlay();
+            else {
                 document.getElementById('game-container').classList.add('correct-pulse');
                 setTimeout(newRound, 500);
             }
-        } else {
-            fail();
-        }
+        } else fail();
     }
 
     function checkOp(op) { if (op === currentFamily.type) showOverlay(); else fail(); }
