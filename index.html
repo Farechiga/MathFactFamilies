@@ -122,20 +122,18 @@
 </div>
 
 <script>
-    let currentMode = 'FILL';
-    let currentFamily = { a: 0, b: 0, c: 0 };
+let currentMode = 'FILL';
+    let currentFamily = { a: 0, b: 0, c: 0, hidden: null };
+    let points = 0;
     
     function generateFamily() {
-        // Randomly decide if we generate based on + or x
         const isMult = Math.random() > 0.5;
         const a = Math.floor(Math.random() * 10) + 1;
         const b = Math.floor(Math.random() * 10) + 1;
-        
         if (isMult) return { a, b, c: a * b };
         return { a, b, c: a + b };
     }
     
-    // THE UNIVERSAL VALIDATOR
     function isValidFamily(a, b, c) {
         const isAddition = (parseInt(a) + parseInt(b) === parseInt(c));
         const isMultiplication = (parseInt(a) * parseInt(b) === parseInt(c));
@@ -149,41 +147,46 @@
                 <div class="line line-l"></div>
                 <div class="line line-r"></div>
                 <div class="line line-b"></div>
-                <div class="symbol-hint" id="success-op" style="top:50%; left:50%; transform:translate(-50%,-50%)"></div>
+                <div class="symbol-hint" id="success-op" style="top:50%; left:50%; transform:translate(-50%,-50%); font-size: 2rem; opacity: 0; transition: 0.3s; font-weight: bold; color: #e73c7e;"></div>
                 
-                <div class="node peak" style="border-color:#e73c7e">${hiddenKey === 'c' ? '?' : family.c}</div>
+                <div class="node peak">${hiddenKey === 'c' ? '?' : family.c}</div>
                 <div class="node base-l">${hiddenKey === 'a' ? '?' : family.a}</div>
                 <div class="node base-r">${hiddenKey === 'b' ? '?' : family.b}</div>
             </div>
         `;
     }
     
+    function setMode(mode) {
+        currentMode = mode;
+        document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active-mode'));
+        event.target.classList.add('active-mode');
+        newRound();
+    }
+
     function newRound() {
         const input = document.getElementById('user-answer');
         const options = document.getElementById('options-area');
         input.value = '';
+        document.getElementById('success-overlay').style.display = 'none';
         
         if (currentMode === 'FILL') {
             currentFamily = generateFamily();
             const keys = ['a', 'b', 'c'];
             currentFamily.hidden = keys[Math.floor(Math.random() * 3)];
-            
             input.style.display = 'inline-block';
             options.style.display = 'none';
             renderTriangle(currentFamily, currentFamily.hidden);
             document.getElementById('instruction').innerText = "What number completes the family?";
+            input.focus();
         } 
         else if (currentMode === 'HUNT') {
-            // 50% chance of a real or fake family
             const isReal = Math.random() > 0.5;
             if (isReal) {
                 currentFamily = generateFamily();
             } else {
                 currentFamily = { a: Math.floor(Math.random()*10)+1, b: Math.floor(Math.random()*10)+1, c: Math.floor(Math.random()*50)+1 };
-                // Ensure we didn't accidentally make a real one
                 if (isValidFamily(currentFamily.a, currentFamily.b, currentFamily.c).valid) currentFamily.c += 1;
             }
-    
             input.style.display = 'none';
             options.style.display = 'block';
             renderTriangle(currentFamily);
@@ -206,9 +209,19 @@
         }
     }
     
+    function checkAnswer() {
+        const val = parseInt(document.getElementById('user-answer').value);
+        const correctVal = currentFamily[currentFamily.hidden];
+        if (val === correctVal) {
+            const results = isValidFamily(currentFamily.a, currentFamily.b, currentFamily.c);
+            showSuccess(results.isMultiplication ? '×' : '+');
+        } else {
+            failShake();
+        }
+    }
+
     function checkOp(chosenOp) {
         const results = isValidFamily(currentFamily.a, currentFamily.b, currentFamily.c);
-        // If the numbers work for BOTH, any button they press is correct!
         if ((chosenOp === '+' && results.isAddition) || (chosenOp === '×' && results.isMultiplication)) {
             showSuccess(chosenOp);
         } else {
@@ -219,20 +232,56 @@
     function checkHunt(userSaidYes) {
         const results = isValidFamily(currentFamily.a, currentFamily.b, currentFamily.c);
         if (userSaidYes === results.valid) {
-            showSuccess(results.isAddition ? '+' : '×');
+            showSuccess(results.isMultiplication ? '×' : '+');
         } else {
             failShake();
         }
     }
     
     function showSuccess(opSymbol) {
+        points += 10;
+        document.getElementById('scoreboard').innerText = `Points: ${points}`;
+        
         const hint = document.getElementById('success-op');
         if(hint) {
             hint.innerText = opSymbol;
             hint.style.opacity = '1';
         }
-        setTimeout(newRound, 800);
+
+        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+
+        // Show Relationship Overlay
+        const overlay = document.getElementById('success-overlay');
+        const display = document.getElementById('equation-display');
+        const results = isValidFamily(currentFamily.a, currentFamily.b, currentFamily.c);
+        
+        let equations = "";
+        if (results.isAddition) {
+            equations = `
+                <div class="equation-col"><div>${currentFamily.a} + ${currentFamily.b} = ${currentFamily.c}</div><div>${currentFamily.c} - ${currentFamily.a} = ${currentFamily.b}</div></div>
+                <div class="equation-col"><div>${currentFamily.b} + ${currentFamily.a} = ${currentFamily.c}</div><div>${currentFamily.c} - ${currentFamily.b} = ${currentFamily.a}</div></div>`;
+        } else {
+            equations = `
+                <div class="equation-col"><div>${currentFamily.a} × ${currentFamily.b} = ${currentFamily.c}</div><div>${currentFamily.c} ÷ ${currentFamily.a} = ${currentFamily.b}</div></div>
+                <div class="equation-col"><div>${currentFamily.b} × ${currentFamily.a} = ${currentFamily.c}</div><div>${currentFamily.c} ÷ ${currentFamily.b} = ${currentFamily.a}</div></div>`;
+        }
+        
+        display.innerHTML = equations;
+        overlay.style.display = 'flex';
     }
+
+    function failShake() {
+        const container = document.getElementById('game-container');
+        container.classList.add('shake');
+        setTimeout(() => container.classList.remove('shake'), 500);
+    }
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && currentMode === 'FILL') checkAnswer();
+    });
+
+    // START THE GAME
+    newRound();
 </script>
 </body>
 </html>
