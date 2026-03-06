@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Math Fact Families</title>
+    <title>Fact Family Engineer</title>
     <style>
         :root {
             --bg-gradient: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab, #9b59b6);
             --teal: #23a6d5;
             --pink: #e73c7e;
-            --vivid-magenta: #FF00FF; /* Brightened for dark background */
-            --overlay-bg: rgba(30, 30, 30, 0.88); /* 88% opaque dark grey */
+            --vivid-magenta: #FF00FF; 
+            --overlay-bg: rgba(20, 20, 20, 0.88); /* Deep Dark 88% Opaque */
         }
 
         #puppy-logo { position: fixed; top: 20px; left: 20px; width: 140px; z-index: 9999; mix-blend-mode: multiply; }
@@ -30,7 +30,8 @@
             padding: 2.5rem; border-radius: 40px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             text-align: center; width: 90%; max-width: 800px; min-height: 520px;
-            position: relative;
+            position: relative; transition: border 0.3s;
+            border: 8px solid transparent;
         }
 
         /* TRIANGLE VISUALIZATION */
@@ -56,24 +57,24 @@
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: var(--overlay-bg);
             display: none; flex-direction: column; justify-content: center;
-            align-items: center; z-index: 9999; transition: opacity 0.3s;
+            align-items: center; z-index: 10000;
         }
         .overlay-content {
             display: grid; grid-template-columns: 1fr 1fr; gap: 60px;
             color: var(--vivid-magenta); font-size: 3.5rem; font-weight: bold;
-            text-shadow: 0 0 10px rgba(255,0,255,0.5);
+            text-shadow: 0 0 15px rgba(255,0,255,0.4);
         }
-        .equation-col { display: flex; flex-direction: column; gap: 15px; }
+        .equation-col { display: flex; flex-direction: column; gap: 15px; text-align: center; }
 
-        .op-indicator { font-size: 1.4rem; color: #555; font-weight: bold; margin-bottom: 5px; }
+        .op-indicator { font-size: 1.4rem; color: #555; font-weight: bold; margin-bottom: 5px; height: 35px; }
         .clue-tag { background: #eee; padding: 4px 12px; border-radius: 8px; color: var(--teal); }
 
         /* CONTROLS */
         .answer-input { font-size: 2.5rem; width: 140px; padding: 10px; border: 4px solid #eee; border-radius: 15px; text-align: center; outline: none; }
-        .answer-input:focus { border-color: var(--pink); }
         .mode-btn { padding: 12px 24px; margin: 8px; cursor: pointer; border-radius: 12px; border: none; background: #f0f0f0; font-weight: bold; font-size: 1rem; }
         .active-mode { background: var(--teal); color: white; }
         
+        .correct-pulse { border-color: #23d5ab !important; }
         .shake { animation: shake 0.5s ease-in-out; }
         @keyframes shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-10px); } 40%, 80% { transform: translateX(10px); } }
     </style>
@@ -82,10 +83,10 @@
 
 <img src="assets/BernadoodleLogo.png" id="puppy-logo" alt="Math Puppy">
 
-<div id="success-overlay" onclick="nextRound()">
-    <h1 style="color: white; margin-bottom: 3rem; font-size: 2.5rem;">Family Relationships Identified!</h1>
+<div id="success-overlay" onclick="newRound()">
+    <h1 style="color: white; margin-bottom: 3rem; font-size: 2.5rem;">The Bond is Mathematically Sound!</h1>
     <div class="overlay-content" id="equation-display"></div>
-    <p style="margin-top: 4rem; color: #888; font-size: 1.2rem;">(Tap anywhere to continue)</p>
+    <p style="margin-top: 4rem; color: #666; font-size: 1.2rem;">(Tap to continue)</p>
 </div>
 
 <div id="game-container">
@@ -96,7 +97,7 @@
     </div>
 
     <div id="operation-clue" class="op-indicator"></div>
-    <h2 id="instruction" style="height: 60px;">Analyze the Bond</h2>
+    <h2 id="instruction" style="height: 60px;">Analyzing...</h2>
 
     <div id="display-area"></div>
 
@@ -120,7 +121,7 @@
         let isReal = true;
 
         if (forceFake) {
-            c = c + (Math.random() > 0.5 ? 3 : -3);
+            c = c + (Math.random() > 0.5 ? 2 : -2);
             isReal = false;
         }
         return { a, b, c, type, inv, isReal };
@@ -149,35 +150,36 @@
         const input = document.getElementById('user-answer');
         const options = document.getElementById('options-area');
         const clueArea = document.getElementById('operation-clue');
+        const container = document.getElementById('game-container');
         
+        container.classList.remove('correct-pulse');
         input.value = ''; input.style.display = 'none'; options.style.display = 'none';
 
         if (currentMode === 'FILL') {
             currentFamily = generateFamily(false);
-            const hidden = ['a', 'b', 'c'][Math.floor(Math.random() * 3)];
-            currentFamily.hidden = hidden;
-            clueArea.innerHTML = `<span class="clue-tag">${currentFamily.type === '×' ? "MULTIPLICATION (×)" : "ADDITION (+)"}</span>`;
-            renderTriangle(currentFamily, hidden);
+            currentFamily.hidden = ['a', 'b', 'c'][Math.floor(Math.random() * 3)];
+            clueArea.innerHTML = `<span class="clue-tag">${currentFamily.type === '×' ? "MULTIPLICATION" : "ADDITION"}</span>`;
+            renderTriangle(currentFamily, currentFamily.hidden);
             input.style.display = 'inline-block'; input.focus();
-            document.getElementById('instruction').innerText = "Complete the Fact Family:";
+            document.getElementById('instruction').innerText = "Complete the Family:";
         } 
         else if (currentMode === 'HUNT') {
             currentFamily = generateFamily(Math.random() > 0.5);
-            clueArea.innerText = "Is the math correct?";
+            clueArea.innerText = "Check the math carefully!";
             renderTriangle(currentFamily);
             options.style.display = 'block';
             options.innerHTML = `<button class="mode-btn" style="background:#23d5ab;color:white;font-size:1.5rem;padding:15px 45px" onclick="checkHunt(true)">YES</button>
                                  <button class="mode-btn" style="background:var(--pink);color:white;font-size:1.5rem;padding:15px 45px" onclick="checkHunt(false)">NO</button>`;
-            document.getElementById('instruction').innerText = "Quality Control Check:";
+            document.getElementById('instruction').innerText = "Is this a real Fact Family?";
         }
         else {
             currentFamily = generateFamily(false);
-            clueArea.innerText = "Determine the rule...";
+            clueArea.innerText = "What connects these numbers?";
             renderTriangle(currentFamily);
             options.style.display = 'block';
-            options.innerHTML = `<button class="mode-btn active-mode" onclick="checkOp('+')">ADD (+)</button>
-                                 <button class="mode-btn active-mode" style="background:var(--pink)" onclick="checkOp('×')">MULTIPLY (×)</button>`;
-            document.getElementById('instruction').innerText = "Identify the Family Type:";
+            options.innerHTML = `<button class="mode-btn active-mode" onclick="checkOp('+')">ADDITION (+)</button>
+                                 <button class="mode-btn active-mode" style="background:var(--pink)" onclick="checkOp('×')">MULTIPLICATION (×)</button>`;
+            document.getElementById('instruction').innerText = "Identify the Rule:";
         }
     }
 
@@ -186,7 +188,21 @@
         else fail();
     }
 
-    function checkHunt(val) { if (val === currentFamily.isReal) showOverlay(); else fail(); }
+    /* THE LOGIC FIX: Caught imposters skip the reinforcement overlay */
+    function checkHunt(playerSaysReal) {
+        if (playerSaysReal === currentFamily.isReal) {
+            if (currentFamily.isReal) {
+                showOverlay();
+            } else {
+                // Correctly caught an imposter! Pulse green and skip overlay.
+                document.getElementById('game-container').classList.add('correct-pulse');
+                setTimeout(newRound, 500);
+            }
+        } else {
+            fail();
+        }
+    }
+
     function checkOp(op) { if (op === currentFamily.type) showOverlay(); else fail(); }
 
     function showOverlay() {
@@ -204,8 +220,6 @@
         `;
         document.getElementById('success-overlay').style.display = 'flex';
     }
-
-    function nextRound() { newRound(); }
 
     function fail() {
         document.getElementById('game-container').classList.add('shake');
